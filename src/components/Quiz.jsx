@@ -1,18 +1,33 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useState, useRef } from 'react';
 import QUIZ_COMPLETE from '../assets/quiz-complete.png'
 import QuestionTimer from './QuestionTimer.jsx';
 import QUESTIONS from '../questions.js';
 export default function Quiz() {
+    const suffleAnswers = useRef();
     const [userAnswers, setUserAnswers] = useState([]);
-    const activeQuestionIndex = userAnswers.length;
+    const [answerState, setAnswerState] = useState('');
+    const activeQuestionIndex = answerState === '' ? userAnswers.length : userAnswers.length - 1;
 
     const quizIsComplete = activeQuestionIndex === QUESTIONS.length;
 
     const handleAnswerSelect = useCallback(function handleAnswerSelect(selectedAnswer) {
+        setAnswerState('answered');
         setUserAnswers((prevAnswers) => {
             return [...prevAnswers, selectedAnswer];
         })
-    }, []);
+
+        setTimeout(() => {
+            if (selectedAnswer === QUESTIONS[activeQuestionIndex].answers[0]) {
+                setAnswerState('correct');
+            } else {
+                setAnswerState('wrong');
+            }
+
+            setTimeout(() => {
+                setAnswerState('');
+            }, 2000)
+        }, 1000)
+    }, [activeQuestionIndex]);
 
     const handleSkipAnswer = useCallback(() => handleAnswerSelect(null), [])
 
@@ -23,8 +38,10 @@ export default function Quiz() {
         </div>
     }
 
-    const suffleAnswers = QUESTIONS[activeQuestionIndex].answers;
-    suffleAnswers.sort(() => Math.random() - 0.5);
+    if (!suffleAnswers.current) {
+        suffleAnswers.current = QUESTIONS[activeQuestionIndex].answers;
+        suffleAnswers.current.sort(() => Math.random() - 0.5);
+    }
 
     return <div id="quiz">
         <div id="question">
@@ -35,11 +52,23 @@ export default function Quiz() {
                 onTimeOut={handleSkipAnswer}
             />
             <ul id='answers'>
-                {suffleAnswers.map((answer) =>
-                    <li key={answer} className='answer'>
-                        <button onClick={() => handleAnswerSelect(answer)}>{answer}</button>
+                {suffleAnswers.current.map((answer) => {
+                    const isSelected = userAnswers[userAnswers.length - 1] === answer;
+                    let cssClass = '';
+                    if (answerState === 'answered' && isSelected) {
+                        cssClass = 'selected';
+                    }
+
+                    if ((answerState === 'correct' || answerState === 'wrong') && isSelected) {
+                        cssClass = answerState;
+                    }
+                    return <li key={answer} className='answer'>
+                        <button
+                            onClick={() => handleAnswerSelect(answer)}
+                            className={cssClass}
+                        >{answer}</button>
                     </li>
-                )}
+                })}
             </ul>
         </div>
     </div>
